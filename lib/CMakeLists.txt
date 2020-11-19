@@ -126,6 +126,43 @@ target_include_directories(${LIB_NAME} INTERFACE
   $<INSTALL_INTERFACE:include>
   $<BUILD_INTERFACE:${CURL_SOURCE_DIR}/include>)
 
+
+# equivalent to the VERSIONINFO section of Makefile.am
+# should be refactored to get a single source of truth for all platforms?
+
+if ( CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" )
+
+   # and linker soname are not guaranteed to mean the same thing.
+   # this is an attempt to make the linux libtool build and the cmake one equivalent.
+
+   # Libtool compatible versions
+   # read:  https://github.com/pvanhoof/dir-examples
+   # version, soversion
+
+   set( CMAKE_LIBCURL_CURRENT_VERSION  11 )
+   set( CMAKE_LIBCURL_REVISION_VERSION  0 )
+   set( CMAKE_LIBCURL_AGE_VERSION       7 )
+
+   ## This is to match exactly what the equivalent of libtool -version-info is : "current:revision:age"
+
+   math(EXPR CMAKE_LIBCURL_SOVERSION "${CMAKE_CURL_CURRENT_VERSION} - ${CMAKE_CURL_AGE_VERSION}")
+
+   set( CMAKE_LIBCURL_VERSION "${CMAKE_LIBCURL_SOVERSION}.${CMAKE_LIBCURL_AGE_VERSION}.${CMAKE_LIBCURL_REVISION_VERSION}" )
+
+   message(STATUS "Linux Platform specific libcurl soversion=[${CMAKE_LIBCURL_SOVERSION}]")
+   message(STATUS "Linux Platform specific libcurl   version=[${CMAKE_LIBCURL_VERSION}]")
+
+   set_target_properties( ${LIB_NAME} PROPERTIES SOVERSION ${CMAKE_LIBCURL_SOVERSION} )
+   set_target_properties( ${LIB_NAME} PROPERTIES   VERSION ${CMAKE_LIBCURL_VERSION} )
+
+   # link with ld's -soname=...
+   # which actually changes the content of the binary
+   # now objdump -p should show SONAME
+   # test if linker is GNU ?
+   target_link_options( ${LIB_NAME} "-soname=${CMAKE_LIBCURL_SOVERSION}" )
+endif()
+
+
 install(TARGETS ${LIB_NAME}
   EXPORT ${TARGETS_EXPORT_NAME}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
