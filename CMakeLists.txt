@@ -150,8 +150,16 @@ set(CURL_LIBS "")
 
 if(ENABLE_ARES)
   set(USE_ARES 1)
-  find_package(CARES REQUIRED)
-  list(APPEND CURL_LIBS ${CARES_LIBRARY})
+
+  find_package( c-ares )
+  if( c-ares_FOUND )
+      # can I do this with a target
+      list( APPEND CURL_LIBS c-ares::cares )
+  else()
+     message( STATUS "Did not find c-ares exported CMake package files, reverting to local, non-relocatable search" )
+     find_package(CARES REQUIRED)
+     list(APPEND CURL_LIBS ${CARES_LIBRARY})
+  endif()
 endif()
 
 include(CurlSymbolHiding)
@@ -449,9 +457,20 @@ endif()
 
 option(USE_NGHTTP2 "Use Nghttp2 library" OFF)
 if(USE_NGHTTP2)
-  find_package(NGHTTP2 REQUIRED)
-  include_directories(${NGHTTP2_INCLUDE_DIRS})
-  list(APPEND CURL_LIBS ${NGHTTP2_LIBRARIES})
+    # As soon as nghttp2 PR 1527 is merged,
+    # nghttp2 is a proper CMake package
+
+    find_package( nghttp2 )
+
+    if( nghttp2_FOUND )
+      message( STATUS "using CMake package for nghttp2...")
+      list( APPEND CURL_LIBS nghttp2::nghttp2 )
+    else()
+      message( STATUS "Using local version of nghttp2. Not relocatable CMake package" )
+      find_package(NGHTTP2 REQUIRED)
+      include_directories(${NGHTTP2_INCLUDE_DIRS})
+      list(APPEND CURL_LIBS ${NGHTTP2_LIBRARIES})
+  endif()
 endif()
 
 function(CheckQuicSupportInOpenSSL)
