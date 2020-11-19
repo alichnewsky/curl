@@ -56,6 +56,38 @@ string(REGEX MATCH "#define LIBCURL_VERSION_NUM 0x[0-9a-fA-F]+"
 string(REGEX REPLACE "[^0]+0x" "" CURL_VERSION_NUM ${CURL_VERSION_NUM})
 
 
+# Libtool compatible versions
+# read:  https://github.com/pvanhoof/dir-examples
+
+## According to https://autotools.io/libtool/version.html, section 4.1
+## Setting the proper Shared Object Version we need to :
+##
+##     o. Increase the current value whenever an interface has been
+##        added, removed or changed.
+##     o. Always increase the revision value.
+##     o. Increase the age value only if the changes made to the ABI
+##        are backward compatible.
+
+set( CMAKE_CURL_CURRENT_VERSION  11 )
+set( CMAKE_CURL_REVISION_VERSION  0 )
+set( CMAKE_CURL_AGE_VERSION       7 )
+
+
+## This is to match exactly what the equivalent of libtool -version-info is : "current:revision:age"
+
+# When you don't care about compatibility with libtool's -version-info, then you can take the following rules for VERSION in cmake, meson and qmake:
+
+# * SOVERSION = Major version
+# * Major version: increase it if you break ABI compatibility
+# * Minor version: increase it if you add ABI compatible features
+# * Patch version: increase it for bug fix releases.
+
+# soversion = current - age
+
+math(EXPR CURL_SOVERSION "${CMAKE_CURL_CURRENT_VERSION} - ${CMAKE_CURL_AGE_VERSION}")
+message(STATUS "curl soversion=[${CURL_SOVERSION}]")
+
+
 # Setup package meta-data
 # SET(PACKAGE "curl")
 message(STATUS "curl version=[${CURL_VERSION}]")
@@ -150,8 +182,16 @@ set(CURL_LIBS "")
 
 if(ENABLE_ARES)
   set(USE_ARES 1)
-  find_package(CARES REQUIRED)
-  list(APPEND CURL_LIBS ${CARES_LIBRARY})
+
+  find_package( c-ares )
+  if( c-ares_FOUND )
+      # can I do this with a target
+      list( APPEND CURL_LIBS c-ares::cares )
+  else()
+     message( STATUS "Did not find c-ares exported CMake package files, reverting to local, non-relocatable search" )
+     find_package(CARES REQUIRED)
+     list(APPEND CURL_LIBS ${CARES_LIBRARY})
+  endif()
 endif()
 
 include(CurlSymbolHiding)
@@ -449,9 +489,20 @@ endif()
 
 option(USE_NGHTTP2 "Use Nghttp2 library" OFF)
 if(USE_NGHTTP2)
-  find_package(NGHTTP2 REQUIRED)
-  include_directories(${NGHTTP2_INCLUDE_DIRS})
-  list(APPEND CURL_LIBS ${NGHTTP2_LIBRARIES})
+    # As soon as nghttp2 PR 1527 is merged,
+    # nghttp2 is a proper CMake package
+
+    find_package( nghttp2 )
+
+    if( nghttp2_FOUND )
+      message( STATUS "using CMake package for nghttp2...")
+      list( APPEND CURL_LIBS nghttp2::nghttp2 )
+    else()
+      message( STATUS "Using local version of nghttp2. Not relocatable CMake package" )
+      find_package(NGHTTP2 REQUIRED)
+      include_directories(${NGHTTP2_INCLUDE_DIRS})
+      list(APPEND CURL_LIBS ${NGHTTP2_LIBRARIES})
+  endif()
 endif()
 
 function(CheckQuicSupportInOpenSSL)

@@ -126,6 +126,12 @@ target_include_directories(${LIB_NAME} INTERFACE
   $<INSTALL_INTERFACE:include>
   $<BUILD_INTERFACE:${CURL_SOURCE_DIR}/include>)
 
+
+set_target_properties( ${LIB_NAME}
+                        PROPERTIES
+                        SOVERSION ${CURL_SOVERSION}
+                      )
+
 install(TARGETS ${LIB_NAME}
   EXPORT ${TARGETS_EXPORT_NAME}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
