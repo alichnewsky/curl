@@ -145,7 +145,7 @@ if ( CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" )
 
    ## This is to match exactly what the equivalent of libtool -version-info is : "current:revision:age"
 
-   math(EXPR CMAKE_LIBCURL_SOVERSION "${CMAKE_CURL_CURRENT_VERSION} - ${CMAKE_CURL_AGE_VERSION}")
+   math(EXPR CMAKE_LIBCURL_SOVERSION "${CMAKE_LIBCURL_CURRENT_VERSION} - ${CMAKE_LIBCURL_AGE_VERSION}")
 
    set( CMAKE_LIBCURL_VERSION "${CMAKE_LIBCURL_SOVERSION}.${CMAKE_LIBCURL_AGE_VERSION}.${CMAKE_LIBCURL_REVISION_VERSION}" )
 
@@ -155,11 +155,9 @@ if ( CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" )
    set_target_properties( ${LIB_NAME} PROPERTIES SOVERSION ${CMAKE_LIBCURL_SOVERSION} )
    set_target_properties( ${LIB_NAME} PROPERTIES   VERSION ${CMAKE_LIBCURL_VERSION} )
 
-   # link with ld's -soname=...
-   # which actually changes the content of the binary
-   # now objdump -p should show SONAME
-   # test if linker is GNU ?
-   target_link_options( ${LIB_NAME} "-soname=${CMAKE_LIBCURL_SOVERSION}" )
+   if ( CMAKE_C_COMPILER_ID STREQUAL "GNU" )
+      target_link_options( ${LIB_NAME} PRIVATE "-Wl,-soname=${CMAKE_LIBCURL_SOVERSION}" )
+   endif()
 endif()
 
 
